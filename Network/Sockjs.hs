@@ -27,8 +27,9 @@ import Data.Maybe
 import Data.Typeable (Typeable)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as L
-import Data.Attoparsec (parseOnly, Parser)
-import Data.Aeson (decode, FromJSON(..), Value(Array))
+import Data.Attoparsec (parse, parseOnly, Parser, maybeResult, IResult(..))
+import Data.Aeson (decode, FromJSON(..), Value(Array), fromJSON, Result(..))
+import Data.Aeson.Parser (value)
 import Data.Enumerator (Enumeratee, Iteratee, throwError, catchError, (=$) )
 import qualified Data.Enumerator.List as EL
 
@@ -54,8 +55,16 @@ instance FromJSON a => FromJSON (SockjsRequest a) where
 toLazy :: ByteString -> L.ByteString
 toLazy = L.fromChunks . (:[])
 
+decodeValue :: FromJSON a => ByteString -> Maybe a
+decodeValue s =
+    case parse value s of
+        Done _ v -> case fromJSON v of
+            Success a -> Just a
+            _         -> Nothing
+        _        -> Nothing
+
 sockjsDataStream :: Monad m => Enumeratee ByteString ByteString m a
-sockjsDataStream = EL.concatMap (unSockjsRequest . fromMaybe (SockjsRequest []) . decode . toLazy)
+sockjsDataStream = EL.concatMap (unSockjsRequest . fromMaybe (SockjsRequest []) . decodeValue)
 
 data SockjsException
   = ConnectionClosed

@@ -2,14 +2,13 @@ function createSockjs(path) {
     var host = window.location.host;
     if(host == '') host = 'localhost';
     var uri = 'http://' + host + path;
-    return new Sockjs(uri);
+    return new SockJS(uri);
 }
 
 var users = [];
 
 function refreshUsers() {
     $('#users').html('');
-        console.log(users);
     for(i in users) {
         $('#users').append($(document.createElement('li')).text(users[i]));
     }

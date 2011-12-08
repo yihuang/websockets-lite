@@ -79,7 +79,7 @@ wsSockjs sockjs req = do
     WS.acceptRequest req
     WS.sendTextData ("o"::ByteString)
     sink <- WS.getSink
-    let sink' = WS.sendSink sink . WS.textData
+    let sink' = WS.sendSink sink . WS.textData . (\s -> mconcat ["a[\"", s, "\"]"])
         iter = iterSockjs sockjs sink'
     flip WS.catchWsError (liftIO . print) $
         WS.runIteratee iter
