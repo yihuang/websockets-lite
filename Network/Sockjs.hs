@@ -17,15 +17,21 @@ module Network.Sockjs
   , close
   ) where
 
+import Control.Applicative
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.IO.Class (liftIO)
 import Control.Exception (Exception, SomeException)
+
+import Data.Maybe
 import Data.Typeable (Typeable)
 import Data.ByteString (ByteString)
+import qualified Data.ByteString.Lazy as L
 import Data.Attoparsec (parseOnly, Parser)
-import Data.Enumerator (Iteratee, throwError, catchError)
+import Data.Aeson (decode, FromJSON(..), Value(Array))
+import Data.Enumerator (Enumeratee, Iteratee, throwError, catchError, (=$) )
 import qualified Data.Enumerator.List as EL
+
 import qualified Network.WebSockets as WS
 
 type Sink = ByteString -> IO ()
@@ -37,7 +43,19 @@ data SockjsState = SockjsState
 type Sockjs = StateT SockjsState (Iteratee ByteString IO)
 
 iterSockjs :: Sockjs a -> Sink -> Iteratee ByteString IO a
-iterSockjs sockjs sink = evalStateT sockjs (SockjsState sink)
+iterSockjs sockjs sink = sockjsDataStream =$ evalStateT sockjs (SockjsState sink)
+
+data SockjsRequest a = SockjsRequest { unSockjsRequest :: [a] }
+
+instance FromJSON a => FromJSON (SockjsRequest a) where
+    parseJSON js@(Array _) = SockjsRequest <$> parseJSON js
+    parseJSON js = SockjsRequest . (:[]) <$> parseJSON js
+
+toLazy :: ByteString -> L.ByteString
+toLazy = L.fromChunks . (:[])
+
+sockjsDataStream :: Monad m => Enumeratee ByteString ByteString m a
+sockjsDataStream = EL.concatMap (unSockjsRequest . fromMaybe (SockjsRequest []) . decode . toLazy)
 
 data SockjsException
   = ConnectionClosed
