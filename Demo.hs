@@ -59,10 +59,8 @@ chat clients = do
         welcome name
         broadcast $ ChatJoin name
         forever $ do
-            msg <- recv
-            case msg of
-                ChatData s -> broadcast $ ChatData $ mconcat [name, ": ", s]
-                _ -> fail "invalid message."
+            msg <- recvBS
+            broadcast $ mconcat [name, ": ", msg]
   where
     fail s = send (ChatError s) >> close
     recvJoin = do msg <- recv
