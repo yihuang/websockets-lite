@@ -26,9 +26,8 @@ enumStreamChan ch = checkContinue0 $ \loop f -> do
     stream <- liftIO $ atomically $ readTChan ch
     f stream >>== loop
 
-runWSLite :: StreamChan ByteString -> StreamChan ByteString -> WSLite () -> IO ()
-runWSLite inchan outchan lite = do
-    let sink s = atomically $ writeTChan outchan (Chunks [s])
-        iter = iterWSLite lite sink
-    catch (run_ $ enumStreamChan inchan $$ iter)
+runWSLite :: Enumerator ByteString IO () -> (ByteString -> IO ()) -> WSLite () -> IO ()
+runWSLite enum sink lite = do
+    let iter = iterWSLite lite sink
+    catch (run_ $ enum $$ iter)
         (\e -> liftIO . putStrLn . ("uncaught exception: "++) . show $ (e::SomeException))
