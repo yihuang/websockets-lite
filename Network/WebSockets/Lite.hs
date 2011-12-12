@@ -26,7 +26,6 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.IO.Class (liftIO)
 import Control.Exception (Exception, SomeException)
 
-import Data.Maybe
 import Data.Monoid
 import Data.Typeable (Typeable)
 import Data.ByteString (ByteString)
@@ -42,7 +41,7 @@ type Sink = ByteString -> IO ()
 type WSLite = ReaderT Sink (Iteratee ByteString IO)
 
 iterWSLite :: WSLite a -> Sink -> Iteratee ByteString IO a
-iterWSLite lite sink = runReaderT lite sink
+iterWSLite = runReaderT
 
 toWebSockets :: WSLite () -> WS.Request -> WS.WebSockets WS.Hybi00 ()
 toWebSockets lite req = do

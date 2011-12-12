@@ -24,7 +24,7 @@ import qualified Network.Wai.Application.Static as Static
 import           Network.WebSockets.Lite
 
 echo :: WSLite ()
-echo = (forever $ recvBS >>= send) `catchError` (\e -> liftIO $ putStrLn "closed")
+echo = forever (recvBS >>= send) `catchError` (\e -> liftIO $ putStrLn "closed")
 
 close' :: WSLite ()
 close' = return ()
@@ -38,7 +38,7 @@ chatParser = ChatJoin <$> (string "join" *> skipSpace *> takeByteString)
          <|> ChatData <$> takeByteString
 
 instance UpProtocol ChatMessage where
-    decode s = parseOnly chatParser s
+    decode = parseOnly chatParser
 
 instance DownProtocol ChatMessage where
     encode (ChatData s) = s
@@ -49,7 +49,7 @@ chat :: MVar (Map ByteString Sink) -> WSLite ()
 chat clients = do
     name <- recvJoin
     sink <- getSink
-    exists <- liftIO $ modifyMVar clients $ \cs -> do
+    exists <- liftIO $ modifyMVar clients $ \cs ->
         case M.lookup name cs of
             Nothing -> return (M.insert name sink cs, False)
             Just _  -> return (cs, True)
@@ -70,7 +70,7 @@ chat clients = do
 
     broadcast msg = do
         sinks <- M.elems <$> liftIO (readMVar clients)
-        forM_ sinks (flip sendSink msg)
+        forM_ sinks (`sendSink` msg)
 
     welcome name = do
         users <- filter (/=name) . M.keys <$> liftIO (readMVar clients)
